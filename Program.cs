@@ -9,24 +9,32 @@ using System.Web;
 using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
+using AngleSharp.Io;
 using ParserFacebookShops.Entities;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation.Generics;
+using PuppeteerSharp;
+using Request = AngleSharp.Io.Request;
 
 namespace ParserFacebookShops
 {
-    class Program
+    class Program : BaseLoader
     {
+        public Program(IBrowsingContext context, Predicate<Request> filter) : base(context, filter)
+        {
+            context = WebContext.Context;
+        }
+
         private const string MagicSpace = " ";
         static async Task Main(string[] args)
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            var result = await ParseWithAngleSharp("https://www.facebook.com/pg/pawnshop.lviv");
+            var result = await Parse("https://www.facebook.com/pg/nusho.shop/");
             stopwatch.Stop();
             var stopwatchElapsed = stopwatch.Elapsed;
 
-            Console.WriteLine("Products\n ---------------------------\n ");
+            Console.WriteLine("\tProducts\t\n ---------------------------\n ");
 
             foreach (var variable in result)
             {
@@ -34,47 +42,62 @@ namespace ParserFacebookShops
             }
         }
 
-        public static async Task<List<ProductModel>> ParseWithAngleSharp(string shopUrl)
+        public static async Task<List<ProductModel>> Parse(string shopUrl)
         {
             try
             {
+
+                //Implementation authentication
+                //WebContext.Context.OpenAsync("https://www.facebook.com").Wait();
+                //(WebContext.Context.Active.QuerySelector<IHtmlInputElement>("input#email")).Value = "bodik_kz@ukr.net";
+                //(WebContext.Context.Active.QuerySelector<IHtmlInputElement>("input#pass")).Value = "201001chepa";
+                //await (WebContext.Context.Active.QuerySelector("#loginbutton").Children.FirstOrDefault() as IHtmlInputElement)
+                //    .SubmitAsync();
+
                 if (!shopUrl.EndsWith("/"))
                     shopUrl += "/";
 
-                var document = await WebContext.Context.OpenAsync(shopUrl + "shop/");
+                var document = await WebContext.Context.OpenAsync("https://www.facebook.com/pg/nusho.shop/shop/?rt=9&ref=page_internal&cid=508067916290424");
+                await document.WaitForReadyAsync();
 
                 var querySelector = document.QuerySelectorAll("#content_container table > tbody > tr td");
 
-                var productModels = querySelector
-                    .Where(x => x.QuerySelector("div > div > div > a > strong")?.InnerHtml != null)
-                    .Select(x =>
-                    {
-                        var product = new ProductModel
+                List<ProductModel> productModels = null;
+
+                if (querySelector.Length != 0)
+                    productModels = querySelector
+                        .Where(x => x.QuerySelector("div > div > div > a > strong")?.InnerHtml != null)
+                        .Select(x =>
                         {
-                            Name = x.QuerySelector("div > div > div > a > strong")?.InnerHtml,
-                        };
+                            var product = new ProductModel
+                            {
+                                Name = x.QuerySelector("div > div > div > a > strong")?.InnerHtml,
+                            };
 
-                        var price = GetPrice(x.QuerySelector("div > div > div > div span")?.InnerHtml ?? x.QuerySelector("div > div > div > div")?.InnerHtml);
+                            var price = GetPrice(x.QuerySelector("div > div > div > div span")?.InnerHtml ??
+                                                 x.QuerySelector("div > div > div > div")?.InnerHtml);
 
-                        if (price.Success)
-                            product.Price = price.Data;
+                            if (price.Success)
+                                product.Price = price.Data;
 
-                        var pastPrice = GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")?.InnerHtml);
+                            var pastPrice = GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")?.InnerHtml);
 
-                        if (pastPrice.Success)
-                            product.PastPrice = pastPrice.Data;
+                            if (pastPrice.Success)
+                                product.PastPrice = pastPrice.Data;
 
-                        var htmlAnchorElement = (IHtmlAnchorElement)x.QuerySelector("div > div > div > a");
+                            var htmlAnchorElement = (IHtmlAnchorElement) x.QuerySelector("div > div > div > a");
 
-                        var productCard = GetProductCard(htmlAnchorElement.Href);
+                            var productCard = GetProductCard(htmlAnchorElement.Href);
 
-                        var image = x.QuerySelector("div > div > a img");
+                            var image = x.QuerySelector("div > div > a img");
 
-                        if (image != null)
-                            product.Image = ((IHtmlImageElement)image).Source;
+                            if (image != null)
+                                product.Image = ((IHtmlImageElement) image).Source;
 
-                        return product;
-                    }).ToList();
+                            return product;
+                        }).ToList();
+
+                document.Close();
 
                 return productModels;
             }
