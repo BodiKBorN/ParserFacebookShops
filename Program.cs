@@ -18,13 +18,8 @@ using Request = AngleSharp.Io.Request;
 
 namespace ParserFacebookShops
 {
-    class Program : BaseLoader
+    class Program
     {
-        public Program(IBrowsingContext context, Predicate<Request> filter) : base(context, filter)
-        {
-            context = WebContext.Context;
-        }
-
         private const string MagicSpace = " ";
         static async Task Main(string[] args)
         {
@@ -47,7 +42,7 @@ namespace ParserFacebookShops
             try
             {
 
-                //Implementation authentication
+                //Implementation authentication with AngleSharp
                 //WebContext.Context.OpenAsync("https://www.facebook.com").Wait();
                 //(WebContext.Context.Active.QuerySelector<IHtmlInputElement>("input#email")).Value = "bodik_kz@ukr.net";
                 //(WebContext.Context.Active.QuerySelector<IHtmlInputElement>("input#pass")).Value = "201001chepa";
@@ -57,10 +52,15 @@ namespace ParserFacebookShops
                 if (!shopUrl.EndsWith("/"))
                     shopUrl += "/";
 
-                var document = await WebContext.Context.OpenAsync("https://www.facebook.com/pg/nusho.shop/shop/?rt=9&ref=page_internal&cid=508067916290424");
-                await document.WaitForReadyAsync();
+                using var document = await WebContext.Context.OpenAsync(shopUrl + "shop/");
 
-                var querySelector = document.QuerySelectorAll("#content_container table > tbody > tr td");
+                await document.WaitForReadyAsync();
+                IHtmlCollection<IElement> querySelector = null;
+                var selectorResult = document.QuerySelectorAll("#content_container table > tbody > tr td");
+
+                querySelector = selectorResult.Length != 0 
+                    ? selectorResult 
+                    : (await GetAllProductPage()).Data;
 
                 List<ProductModel> productModels = null;
 
@@ -98,6 +98,7 @@ namespace ParserFacebookShops
                         }).ToList();
 
                 document.Close();
+                //document.Dispose();
 
                 return productModels;
             }
@@ -181,11 +182,67 @@ namespace ParserFacebookShops
 
         public static async Task<IResult<string>> GetProductCard(string cardUrl)
         {
-            if (cardUrl == null)
-                Result<IElement>.CreateFailed();
+            try
+            {
+                if (cardUrl == null)
+                    Result<IElement>.CreateFailed();
 
-            var openAsync = await WebContext.Context.OpenAsync(cardUrl);
-            return null;
+                var openAsync = await WebContext.Context.OpenAsync(cardUrl);
+                return null;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
+
+        public static async Task<IResult<IHtmlCollection<IElement>>> GetAllProductPage()
+        {
+            try
+            {
+                await new BrowserFetcher().DownloadAsync(BrowserFetcher.DefaultRevision);
+
+                using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
+                {
+                    Headless = true
+                });
+
+                var page = await browser.NewPageAsync();
+
+                await page.GoToAsync("https://www.facebook.com/pg/nusho.shop/shop/");
+
+                //Authentication 
+                await page.EvaluateExpressionAsync("document.querySelector('#email').value = 'bodik_kz@ukr.net'");
+                await page.EvaluateExpressionAsync("document.querySelector('#pass').value = '201001chepa'");
+                await page.EvaluateExpressionAsync("document.querySelector('#loginbutton').click()");
+                await page.WaitForNavigationAsync();
+
+                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
+
+                var waitForSelectorResult = await page.WaitForSelectorAsync("#u_0_4 > ul > li:nth-child(5) > div > div.clearfix._2pi9._2pin._2pic > div.rfloat._ohf > a");
+
+                var href = await (await waitForSelectorResult.GetPropertyAsync("href")).JsonValueAsync<string>()
+                           ?? (await page.EvaluateExpressionAsync("(function() {let node = document.querySelector('#u_0_4 > ul > li:nth-child(5) > div > div.clearfix._2pi9._2pin._2pic > div.rfloat._ohf > a'); return !!node ? node.href : null})()")).ToString(); ;
+
+                var s1 = (await waitForSelectorResult.GetPropertyAsync("href")).ToString();
+                var s = (await page.EvaluateExpressionAsync("(function() {let node = document.querySelector('#u_0_4 > ul > li:nth-child(5) > div > div.clearfix._2pi9._2pin._2pic > div.rfloat._ohf > a'); return !!node ? node.href : null})()")).ToString();
+                await browser.CloseAsync();
+
+                using var document = await WebContext.Context.OpenAsync(href);
+
+                var result = document.QuerySelectorAll("tbody > tr td");
+
+                document.Close();
+
+                return result == null 
+                    ? Result<IHtmlCollection<IElement>>.CreateFailed("ELEMENTS_NOT_FOUND") 
+                    : Result<IHtmlCollection<IElement>>.CreateSuccess(result);
+            }
+            catch (Exception e)
+            {
+                return Result<IHtmlCollection<IElement>>.CreateFailed("ERROR_GET_ALL_PRODUCT_PAGE");
+            }
         }
     }
 }
