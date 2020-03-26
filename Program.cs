@@ -1,4 +1,13 @@
-﻿using System;
+﻿using AngleSharp;
+using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
+using ParserFacebookShops.Entities;
+using ParserFacebookShops.Models.Abstractions.Generics;
+using ParserFacebookShops.Models.Implementation.Generics;
+using ParserFacebookShops.Services.Abstractions;
+using ParserFacebookShops.Services.Implementation;
+using PuppeteerSharp;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -7,15 +16,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
-using AngleSharp.Io;
-using ParserFacebookShops.Entities;
-using ParserFacebookShops.Models.Abstractions.Generics;
-using ParserFacebookShops.Models.Implementation.Generics;
-using PuppeteerSharp;
-using Request = AngleSharp.Io.Request;
 
 namespace ParserFacebookShops
 {
@@ -27,16 +27,20 @@ namespace ParserFacebookShops
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            var result = await Parse("https://www.facebook.com/pg/pawnshop.lviv");
+            //var result = await Parse("https://www.facebook.com/pg/nusho.shop/");
+            IParserService _parserService = new ParserService();
+
+            var shop = await _parserService.ParseShopAsync("https://www.facebook.com/pg/nusho.shop/");
+
             stopwatch.Stop();
             var stopwatchElapsed = stopwatch.Elapsed;
 
             Console.WriteLine("\tProducts\t\n ---------------------------\n ");
 
-            foreach (var variable in result)
-            {
-                Console.WriteLine($"Name: {variable.Name}\nPrice: {variable.Price.Cost}{variable.Price.Currency}\nTotal: {variable.Price.Total }\nDescription: {variable.Description}\nPast Price: {variable.Price.Cost}{variable.PastPrice.Currency}\n");
-            }
+            //foreach (var variable in result)
+            //{
+            //    Console.WriteLine($"Name: {variable.Name}\nPrice: {variable.Price.Cost}{variable.Price.Currency}\nTotal: {variable.Price.Total }\nDescription: {variable.Description}\nPast Price: {variable.Price.Cost}{variable.PastPrice.Currency}\n");
+            //}
         }
 
         public static async Task<List<Product>> Parse(string shopUrl)
@@ -45,10 +49,10 @@ namespace ParserFacebookShops
             {
 
                 //Implementation authentication with AngleSharp
-                //WebContext.Context.OpenAsync("https://www.facebook.com").Wait();
-                //(WebContext.Context.Active.QuerySelector<IHtmlInputElement>("input#email")).Value = "bodik_kz@ukr.net";
-                //(WebContext.Context.Active.QuerySelector<IHtmlInputElement>("input#pass")).Value = "201001chepa";
-                //await (WebContext.Context.Active.QuerySelector("#loginbutton").Children.FirstOrDefault() as IHtmlInputElement)
+                //ParserContext.AngleSharpContext.OpenAsync("https://www.facebook.com").Wait();
+                //(ParserContext.AngleSharpContext.Active.QuerySelector<IHtmlInputElement>("input#email")).Value = "bodik_kz@ukr.net";
+                //(ParserContext.AngleSharpContext.Active.QuerySelector<IHtmlInputElement>("input#pass")).Value = "201001chepa";
+                //await (ParserContext.AngleSharpContext.Active.QuerySelector("#loginbutton").Children.FirstOrDefault() as IHtmlInputElement)
                 //    .SubmitAsync();
 
                 if (!shopUrl.EndsWith("/"))
@@ -56,52 +60,52 @@ namespace ParserFacebookShops
 
                 shopUrl += "shop/";
 
-                using var document = await WebContext.Context.OpenAsync(shopUrl);
+                using var document = await ParserContext.AngleSharpContext.OpenAsync(shopUrl);
 
                 await document.WaitForReadyAsync();
 
                 var selectorResult = document.QuerySelectorAll("#content_container table > tbody > tr td");
 
 
-                var querySelector = selectorResult.Length != 0 
-                    ? selectorResult 
+                var querySelector = selectorResult.Length != 0
+                    ? selectorResult
                     : (await GetAllProductPageAsync(shopUrl)).Data;
 
-                if (querySelector == null || querySelector.Length == 0) 
+                if (querySelector == null || querySelector.Length == 0)
                     return null;
 
                 var productModels = querySelector
                     .Where(x => x.QuerySelector("div > div > div > a > strong")?.InnerHtml != null)
                     .Select(x =>
                     {
-                            Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
-                            var product = new Product
-                            {
-                                Name = x.QuerySelector("div > div > div > a > strong")?.InnerHtml,
-                            };
+                        Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+                        var product = new Product
+                        {
+                            Name = x.QuerySelector("div > div > div > a > strong")?.InnerHtml,
+                        };
 
-                            var price = GetPrice(x.QuerySelector("div > div > div > div span")?.InnerHtml ??
-                                                 x.QuerySelector("div > div > div > div")?.InnerHtml);
+                        var price = GetPrice(x.QuerySelector("div > div > div > div span")?.InnerHtml ??
+                                             x.QuerySelector("div > div > div > div")?.InnerHtml);
 
-                            if (price.Success)
-                                product.Price = price.Data;
+                        if (price.Success)
+                            product.Price = price.Data;
 
-                            var pastPrice = GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")
-                                ?.InnerHtml);
+                        var pastPrice = GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")
+                            ?.InnerHtml);
 
-                            if (pastPrice.Success)
-                                product.PastPrice = pastPrice.Data;
+                        if (pastPrice.Success)
+                            product.PastPrice = pastPrice.Data;
 
-                            var htmlAnchorElement = (IHtmlAnchorElement) x.QuerySelector("div > div > div > a");
+                        var htmlAnchorElement = (IHtmlAnchorElement)x.QuerySelector("div > div > div > a");
 
-                            var productCard = GetProductCardAsync(htmlAnchorElement.Href);
+                        var productCard = GetProductCardAsync(htmlAnchorElement.Href);
 
-                            var image = x.QuerySelector("div > div > a img");
+                        var image = x.QuerySelector("div > div > a img");
 
-                            if (image != null)
-                                product.Image = ((IHtmlImageElement) image).Source;
+                        if (image != null)
+                            product.Image = ((IHtmlImageElement)image).Source;
 
-                            return product;
+                        return product;
                     })
                     .ToList();
 
@@ -155,7 +159,7 @@ namespace ParserFacebookShops
                 var value = regex.Match(htmlDecode.Replace(MagicSpace, string.Empty)).Value;
 
                 var numberFormat = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-                
+
                 numberFormat.NumberDecimalSeparator = new Regex(@"(\,|\.)").Match(value).Value;
 
                 return double.TryParse(value, NumberStyles.Currency, numberFormat, out var cost)
@@ -192,7 +196,7 @@ namespace ParserFacebookShops
                 if (cardUrl == null)
                     Result<IElement>.CreateFailed();
 
-                var openAsync = await WebContext.Context.OpenAsync(cardUrl);
+                var openAsync = await ParserContext.AngleSharpContext.OpenAsync(cardUrl);
                 return null;
             }
             catch (Exception e)
@@ -206,7 +210,7 @@ namespace ParserFacebookShops
         {
             try
             {
-                await new BrowserFetcher().DownloadAsync(BrowserFetcher.DefaultRevision);
+                //await new BrowserFetcher().DownloadAsync(BrowserFetcher.DefaultRevision);
 
                 using var browser = await Puppeteer.LaunchAsync(new LaunchOptions
                 {
@@ -234,14 +238,14 @@ namespace ParserFacebookShops
                 var s = (await page.EvaluateExpressionAsync("(function() {let node = document.querySelector('#u_0_4 > ul > li:nth-child(5) > div > div.clearfix._2pi9._2pin._2pic > div.rfloat._ohf > a'); return !!node ? node.href : null})()")).ToString();
                 await browser.CloseAsync();
 
-                using var document = await WebContext.Context.OpenAsync(href);
+                using var document = await ParserContext.AngleSharpContext.OpenAsync(href);
 
                 var result = document.QuerySelectorAll("tbody > tr td");
 
                 document.Close();
 
-                return result == null 
-                    ? Result<IHtmlCollection<IElement>>.CreateFailed("ELEMENTS_NOT_FOUND") 
+                return result == null
+                    ? Result<IHtmlCollection<IElement>>.CreateFailed("ELEMENTS_NOT_FOUND")
                     : Result<IHtmlCollection<IElement>>.CreateSuccess(result);
             }
             catch (Exception e)

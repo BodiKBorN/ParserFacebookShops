@@ -2,10 +2,8 @@
 
 namespace ParserFacebookShops.Entities
 {
-    public class Price : IEntity<int>
+    public class Price
     {
-        public int Id { get; set; }
-
         public string Total { get; set; }
 
         public double? Cost { get; set; }

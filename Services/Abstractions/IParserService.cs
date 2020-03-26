@@ -1,18 +1,12 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using AngleSharp.Dom;
-using ParserFacebookShops.Entities;
-using ParserFacebookShops.Models.Abstractions;
+﻿using ParserFacebookShops.Entities;
 using ParserFacebookShops.Models.Abstractions.Generics;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Abstractions
 {
     public interface IParserService
     {
-        Task<List<Product>> GetShop(string shopId);
-
-        public void Parse();
-
-        Task<IResult<IHtmlCollection<IElement>>> GetShopWithJs(string address);
+        Task<IResult<List<Product>>> ParseShopAsync(string shopId, bool authentication = false);
     }
 }

@@ -1,13 +1,16 @@
-﻿using System.Globalization;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Web;
+﻿using AngleSharp;
+using AngleSharp.Dom;
 using ParserFacebookShops.Entities;
 using ParserFacebookShops.Models.Abstractions;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation.Generics;
 using ParserFacebookShops.Services.Abstractions;
+using System;
+using System.Globalization;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Web;
 
 namespace ParserFacebookShops.Services.Implementation
 {
@@ -15,22 +18,32 @@ namespace ParserFacebookShops.Services.Implementation
     {
         private const string MagicSpace = " ";
 
-        public Task<IResult> GetFullProductCard()
+        public async Task<IResult> GetFullProductCardAsync(string cardUrl)
         {
-            throw new System.NotImplementedException();
+            try
+            {
+                if (cardUrl == null)
+                    Result<IElement>.CreateFailed();
+
+                var openAsync = await ParserContext.AngleSharpContext.OpenAsync(cardUrl);
+                return null;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
-        public IResult<string> GetName()
-        {
-            throw new System.NotImplementedException();
-        }
+        public string GetName(IElement element) =>
+            element.QuerySelector("div > div > div > a > strong")?.InnerHtml;
 
-        public IResult<Price> GetPrice(string htmlPrice)
+        public IResult<Price> ParsePrice(string htmlPrice)
         {
             try
             {
                 if (htmlPrice == null)
-                    return Result<Price>.CreateFailed("NOT_CORRECT_DATA");
+                    return Result<Price>.CreateFailed("ELEMENT_NOT_FOUND");
 
                 var htmlDecode = HttpUtility.HtmlDecode(htmlPrice);
 
@@ -57,12 +70,12 @@ namespace ParserFacebookShops.Services.Implementation
             }
         }
 
-        public Task<IResult> GetImage()
+        private IResult GetImage()
         {
             throw new System.NotImplementedException();
         }
 
-        public IResult GetDescription()
+        private IResult GetDescription()
         {
             throw new System.NotImplementedException();
         }
@@ -71,6 +84,9 @@ namespace ParserFacebookShops.Services.Implementation
         {
             try
             {
+                if (htmlDecode == null)
+                    return Result<double>.CreateFailed("NOT_CORRECT_DATA");
+
                 var regex = new Regex(@"(\d+(\,|\.)?\d+)|(\d)");
 
                 var value = regex.Match(htmlDecode.Replace(MagicSpace, string.Empty)).Value;
