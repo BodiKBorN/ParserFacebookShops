@@ -2,7 +2,7 @@
 
 namespace ParserFacebookShops.Entities
 {
-    public class ProductModel : BaseEntity
+    public class Product : BaseEntity
     {
         public string Name { get; set; }
 

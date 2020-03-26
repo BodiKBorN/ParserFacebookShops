@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using AngleSharp;
@@ -21,11 +22,12 @@ namespace ParserFacebookShops
     class Program
     {
         private const string MagicSpace = " ";
+
         static async Task Main(string[] args)
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            var result = await Parse("https://www.facebook.com/pg/nusho.shop/");
+            var result = await Parse("https://www.facebook.com/pg/pawnshop.lviv");
             stopwatch.Stop();
             var stopwatchElapsed = stopwatch.Elapsed;
 
@@ -37,7 +39,7 @@ namespace ParserFacebookShops
             }
         }
 
-        public static async Task<List<ProductModel>> Parse(string shopUrl)
+        public static async Task<List<Product>> Parse(string shopUrl)
         {
             try
             {
@@ -52,24 +54,28 @@ namespace ParserFacebookShops
                 if (!shopUrl.EndsWith("/"))
                     shopUrl += "/";
 
-                using var document = await WebContext.Context.OpenAsync(shopUrl + "shop/");
+                shopUrl += "shop/";
+
+                using var document = await WebContext.Context.OpenAsync(shopUrl);
 
                 await document.WaitForReadyAsync();
-                IHtmlCollection<IElement> querySelector = null;
+
                 var selectorResult = document.QuerySelectorAll("#content_container table > tbody > tr td");
 
-                querySelector = selectorResult.Length != 0 
+
+                var querySelector = selectorResult.Length != 0 
                     ? selectorResult 
-                    : (await GetAllProductPage()).Data;
+                    : (await GetAllProductPageAsync(shopUrl)).Data;
 
-                List<ProductModel> productModels = null;
+                if (querySelector == null || querySelector.Length == 0) 
+                    return null;
 
-                if (querySelector.Length != 0)
-                    productModels = querySelector
-                        .Where(x => x.QuerySelector("div > div > div > a > strong")?.InnerHtml != null)
-                        .Select(x =>
-                        {
-                            var product = new ProductModel
+                var productModels = querySelector
+                    .Where(x => x.QuerySelector("div > div > div > a > strong")?.InnerHtml != null)
+                    .Select(x =>
+                    {
+                            Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+                            var product = new Product
                             {
                                 Name = x.QuerySelector("div > div > div > a > strong")?.InnerHtml,
                             };
@@ -80,14 +86,15 @@ namespace ParserFacebookShops
                             if (price.Success)
                                 product.Price = price.Data;
 
-                            var pastPrice = GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")?.InnerHtml);
+                            var pastPrice = GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")
+                                ?.InnerHtml);
 
                             if (pastPrice.Success)
                                 product.PastPrice = pastPrice.Data;
 
                             var htmlAnchorElement = (IHtmlAnchorElement) x.QuerySelector("div > div > div > a");
 
-                            var productCard = GetProductCard(htmlAnchorElement.Href);
+                            var productCard = GetProductCardAsync(htmlAnchorElement.Href);
 
                             var image = x.QuerySelector("div > div > a img");
 
@@ -95,10 +102,8 @@ namespace ParserFacebookShops
                                 product.Image = ((IHtmlImageElement) image).Source;
 
                             return product;
-                        }).ToList();
-
-                document.Close();
-                //document.Dispose();
+                    })
+                    .ToList();
 
                 return productModels;
             }
@@ -180,7 +185,7 @@ namespace ParserFacebookShops
             }
         }
 
-        public static async Task<IResult<string>> GetProductCard(string cardUrl)
+        public static async Task<IResult<string>> GetProductCardAsync(string cardUrl)
         {
             try
             {
@@ -197,7 +202,7 @@ namespace ParserFacebookShops
             }
         }
 
-        public static async Task<IResult<IHtmlCollection<IElement>>> GetAllProductPage()
+        public static async Task<IResult<IHtmlCollection<IElement>>> GetAllProductPageAsync(string address)
         {
             try
             {
@@ -210,7 +215,7 @@ namespace ParserFacebookShops
 
                 var page = await browser.NewPageAsync();
 
-                await page.GoToAsync("https://www.facebook.com/pg/nusho.shop/shop/");
+                await page.GoToAsync(address);
 
                 //Authentication 
                 await page.EvaluateExpressionAsync("document.querySelector('#email').value = 'bodik_kz@ukr.net'");
