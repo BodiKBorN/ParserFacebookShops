@@ -11,16 +11,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ParserFacebookShops.Models.Implementation;
 
 namespace ParserFacebookShops.Services.Implementation
 {
-    public class ShopService : IShopService
+    public class ShopService : IShopService, IParseble
     {
         private readonly IProductService _productService;
+        private readonly IParser _parser;
 
         public ShopService()
         {
             _productService = new ProductService();
+            _parser = GetParser().Data;
         }
 
         public async Task<IResult<List<Product>>> GetProductsAsync(string shopId)
@@ -32,28 +35,27 @@ namespace ParserFacebookShops.Services.Implementation
 
                 shopId += "shop/";
 
-                using var document = await ParserContext.AngleSharpContext.OpenAsync(shopId);
+                var document = await _parser.OpenPage(shopId);
 
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " 1");
+                if (!document.Success)
+                    return Result<List<Product>>.CreateFailed();
 
-                await document.WaitForReadyAsync();
+                var selectorResult = document.Data.QuerySelectorAll("#content_container table > tbody > tr td");
 
-                var selectorResult = document.QuerySelectorAll("#content_container table > tbody > tr td");
-
-                document.Close();
+                document.Data.Close();
 
                 var productElements = selectorResult.Length != 0
                     ? selectorResult
                     : (await GetElementsFromAllProductsPageAsync(shopId)).Data;
 
                 if (productElements.Length == 0)
-                    return Result<List<Product>>.CreateFailed("ELEMENTS_NOT_FOUND"); ;
+                    return Result<List<Product>>.CreateFailed("ELEMENTS_NOT_FOUND");
 
                 Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " 2");
 
                 var productModels = productElements
                     .Where(x => _productService.GetName(x) != null)
-                    .Select(x =>
+                    .Select(async x =>
                     {
                         Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " 3");
 
@@ -73,8 +75,9 @@ namespace ParserFacebookShops.Services.Implementation
                         if (pastPrice.Success)
                             product.PastPrice = pastPrice.Data;
 
-                        var htmlAnchorElement = (IHtmlAnchorElement)x.QuerySelector("div > div > div > a");
+                        var fullProductCardAsync = await _productService.GetFullProductCardAsync(x);
 
+                        Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " 3 ----past");
                         var image = x.QuerySelector("div > div > a img");
 
                         if (image != null)
@@ -84,9 +87,10 @@ namespace ParserFacebookShops.Services.Implementation
                     })
                     .ToList();
 
+                var whenAll = await Task.WhenAll(productModels);
                 Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " 4");
 
-                return Result<List<Product>>.CreateSuccess(productModels);
+                return Result<List<Product>>.CreateSuccess(whenAll.ToList());
             }
             catch (Exception e)
             {
@@ -144,6 +148,13 @@ namespace ParserFacebookShops.Services.Implementation
             {
                 return Result<IHtmlCollection<IElement>>.CreateFailed("ERROR_GET_ALL_PRODUCT_PAGE");
             }
+        }
+
+        public IResult<IParser> GetParser()
+        {
+            IParser parser = new AngleSharpParser();
+
+            return Result<IParser>.CreateSuccess(parser);
         }
     }
 }

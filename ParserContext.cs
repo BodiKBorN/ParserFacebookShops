@@ -6,6 +6,6 @@ namespace ParserFacebookShops
 {
     internal static class ParserContext
     {
-        public static IBrowsingContext AngleSharpContext { get;}  = BrowsingContext.New(Configuration.Default.WithDefaultLoader().WithDefaultCookies().WithJs());
+        public static IBrowsingContext AngleSharpContext { get;}  = BrowsingContext.New(Configuration.Default.WithDefaultLoader().WithDefaultCookies());
     }
 }

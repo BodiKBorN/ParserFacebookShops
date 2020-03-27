@@ -9,7 +9,7 @@ namespace ParserFacebookShops.Services.Abstractions
 {
     public interface IProductService
     {
-        Task<IResult> GetFullProductCardAsync(string cardUrl);
+        Task<IResult<Product>> GetFullProductCardAsync(IElement element);
 
         string GetName(IElement element);
 

@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Abstractions
 {
-    public interface IParserService
+    public interface IParseble
     {
-        Task<IResult<List<Product>>> ParseShopAsync(string shopId, bool authentication = false);
+        IResult<IParser> GetParser();
     }
 }
