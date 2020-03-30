@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using AngleSharp.Dom;
 using ParserFacebookShops.Entities;
 using ParserFacebookShops.Models.Abstractions;
@@ -9,10 +10,6 @@ namespace ParserFacebookShops.Services.Abstractions
 {
     public interface IProductService
     {
-        Task<IResult<Product>> GetFullProductCardAsync(IElement element);
-
-        string GetName(IElement element);
-
         IResult<Price> ParsePrice(string htmlPrice);
     }
 }

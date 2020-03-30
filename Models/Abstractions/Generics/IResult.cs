@@ -1,4 +1,6 @@
-﻿namespace ParserFacebookShops.Models.Abstractions.Generics
+﻿using System;
+
+namespace ParserFacebookShops.Models.Abstractions.Generics
 {
     public interface IResult<out TData> : IResult
     {

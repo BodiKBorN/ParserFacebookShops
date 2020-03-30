@@ -6,6 +6,7 @@ using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation.Generics;
 using ParserFacebookShops.Services.Abstractions;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -14,6 +15,7 @@ using System.Threading.Tasks;
 using System.Web;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
+using PuppeteerSharp;
 
 namespace ParserFacebookShops.Services.Implementation
 {
@@ -21,39 +23,7 @@ namespace ParserFacebookShops.Services.Implementation
     {
         private const string MagicSpace = " ";
 
-        public async Task<IResult<Product>> GetFullProductCardAsync(IElement element)
-        {
-            try
-            {
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in get product");
-                if (element == null)
-                    Result<Product>.CreateFailed();
 
-                var querySelector = element.QuerySelector("div > div > div > a");
-
-                if (!(querySelector is IHtmlAnchorElement))
-                    return Result<Product>.CreateFailed();
-
-                var cardUrl = (querySelector as IHtmlAnchorElement).Href;
-                
-
-                using var document = await ParserContext.AngleSharpContext.OpenAsync(cardUrl);
-
-                await document.WaitForReadyAsync();
-
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in get product ----past");
-                var documentBody = document.Body;
-
-                return null;
-            }
-            catch (Exception e)
-            {
-                return Result<Product>.CreateFailed();
-            }
-        }
-
-        public string GetName(IElement element) =>
-            element.QuerySelector("div > div > div > a > strong")?.InnerHtml;
 
         public IResult<Price> ParsePrice(string htmlPrice)
         {

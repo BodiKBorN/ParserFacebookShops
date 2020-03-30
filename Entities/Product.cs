@@ -1,4 +1,5 @@
-﻿using ParserFacebookShops.Entities.Abstractions;
+﻿using System.Collections.Generic;
+using ParserFacebookShops.Entities.Abstractions;
 
 namespace ParserFacebookShops.Entities
 {
@@ -10,7 +11,9 @@ namespace ParserFacebookShops.Entities
 
         public Price PastPrice { get; set; }
 
-        public string Image { get; set; }
+        public string Category { get; set; }
+
+        public IReadOnlyCollection<string> ImageUrl { get; set; }
 
         public string Description { get; set; }
     }
