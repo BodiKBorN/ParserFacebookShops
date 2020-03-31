@@ -10,6 +10,8 @@ namespace ParserFacebookShops.Services.Abstractions
 {
     public interface IProductService
     {
-        IResult<Price> ParsePrice(string htmlPrice);
+        IResult<Price> GetPrice(string htmlPrice);
+
+        string ParseImageUrl(string imageInnerText);
     }
 }

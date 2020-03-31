@@ -1,27 +1,20 @@
-﻿using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
-using ParserFacebookShops.Entities;
+﻿using ParserFacebookShops.Entities;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation.Generics;
 using ParserFacebookShops.Services.Abstractions;
-using PuppeteerSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using ParserFacebookShops.Models.Implementation;
 
 namespace ParserFacebookShops.Services.Implementation
 {
-    public class ShopService : IShopService
+    public class ShopService : IShopService, IDisposable
     {
-        private readonly IProductService _productService;
+
         private readonly AngleSharpParser _angleSharpParser;
         public ShopService()
         {
-            _productService = new ProductService();
             _angleSharpParser = new AngleSharpParser();
         }
 
@@ -45,14 +38,19 @@ namespace ParserFacebookShops.Services.Implementation
 
                 var productModels = _angleSharpParser.GetProducts(productElements);
 
-                var whenAll = await Task.WhenAll(productModels);
+                var products = await Task.WhenAll(productModels);
 
-                return Result<List<Product>>.CreateSuccess(whenAll.ToList());
+                return Result<List<Product>>.CreateSuccess(products.ToList());
             }
-            catch (Exception e)
+            catch(Exception e)
             {
                 return Result<List<Product>>.CreateFailed("ERROR_GET_PRODUCTS");
             }
+        }
+
+        public void Dispose()
+        {
+            _angleSharpParser?.Dispose();
         }
     }
 }

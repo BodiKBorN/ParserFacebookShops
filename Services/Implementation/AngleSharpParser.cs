@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using AngleSharp;
+﻿using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 using ParserFacebookShops.Entities;
@@ -11,65 +6,88 @@ using ParserFacebookShops.Models.Abstractions;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation;
 using ParserFacebookShops.Models.Implementation.Generics;
-using ParserFacebookShops.Services.Abstractions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Implementation
 {
-    public class AngleSharpParser
+    public class AngleSharpParser : IDisposable
     {
         public IBrowsingContext Context { get; }
 
-        public bool HasAuthentication { get; set; }
-
         private readonly PuppeteerSharpParser _puppeteerSharpParser;
-        private readonly IProductService _productService;
 
         public AngleSharpParser()
         {
-            Context = ParserContext.AngleSharpContext;
+            Context = BrowsingContext.New(Configuration.Default.WithDefaultLoader().WithDefaultCookies());
             _puppeteerSharpParser = new PuppeteerSharpParser();
-            _productService = new ProductService();
         }
 
-        public async Task<IResult<IDocument>> OpenPageAsync(string url)
+        public async Task<IDocument> OpenPageAsync(string url)
         {
-            var document = await Context.OpenAsync(url);
+            try
+            {
+                var document = await Context.OpenAsync(url);
 
-            await document.WaitForReadyAsync();
+                await document.WaitForReadyAsync();
 
-            return Result<IDocument>.CreateSuccess(document);
+                return document;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
         public async Task<IHtmlCollection<IElement>> GetElementsFromShopPageAsync(string shopId)
         {
-             var document = (await OpenPageAsync(shopId));
+            try
+            {
+                await SetAuthenticationForFacebookAsync();
 
-             //if (!document.Success)
-             //    return Result<List<Product>>.CreateFailed();
+                using var document = (await OpenPageAsync(shopId));
 
-             var selectorResult = document.Data.QuerySelectorAll("#content_container table > tbody > tr td");
+                var selectorResult = document.QuerySelectorAll("#content_container table > tbody > tr td");
 
-             document.Data.Close();
+                document.Close();
 
-             return selectorResult;
+                return selectorResult;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
         public async Task<IHtmlCollection<IElement>> GetElementsFromAllProductPageAsync(string shopUrl)
         {
-            Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in AngleSharp GetElementsFromAllProductPageAsync");
+            try
+            {
+                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in AngleSharp GetElementsFromAllProductPageAsync");
 
-            var href = await _puppeteerSharpParser.GetHrefAllProductsPageAsync(shopUrl);
+                var href = await _puppeteerSharpParser.GetHrefAllProductsPageAsync(shopUrl);
 
-            if (!href.Success)
-                return null;
+                if (!href.Success)
+                    return null;
 
-            using var document = await ParserContext.AngleSharpContext.OpenAsync(href.Data);
+                using var document = await Context.OpenAsync(href.Data);
 
-            var result = document.QuerySelectorAll("tbody > tr td");
+                var result = document.QuerySelectorAll("tbody > tr td");
 
-            document.Close();
-            Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " out AngleSharp GetElementsFromAllProductPageAsync");
-            return result;
+                document.Close();
+                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " out AngleSharp GetElementsFromAllProductPageAsync");
+                return result;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
         public List<Task<Product>> GetProducts(IHtmlCollection<IElement> productElements)
@@ -93,13 +111,13 @@ namespace ParserFacebookShops.Services.Implementation
 
                         //product.Name = GetName(x);
 
-                        //var price = _productService.ParsePrice(x.QuerySelector("div > div > div > div span")?.InnerHtml
+                        //var price = _productService.GetPrice(x.QuerySelector("div > div > div > div span")?.InnerHtml
                         //                                       ?? x.QuerySelector("div > div > div > div")?.InnerHtml);
 
                         //if (price.Success)
                         //    product.Price = price.Data;
 
-                        //var pastPrice = _productService.ParsePrice(x.QuerySelector("div > div > div > div span:nth-child(2)")?.InnerHtml);
+                        //var pastPrice = _productService.GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")?.InnerHtml);
 
                         //if (pastPrice.Success)
                         //    product.PastPrice = pastPrice.Data;
@@ -122,17 +140,20 @@ namespace ParserFacebookShops.Services.Implementation
             }
         }
 
-        public IResult<string> GetProductCardHref(IElement element)
+        public string GetName(IElement element) =>
+            element.QuerySelector("div > div > div > a > strong")?.InnerHtml;
+
+        public IResult<string> GetProductCardHref(IElement productElement)
         {
             try
             {
-                if (element == null)
-                    Result<Product>.CreateFailed();
+                if (productElement == null)
+                    return Result<string>.CreateFailed("NOT_CORRECT_DATA");
 
-                var querySelector = element.QuerySelector("div > div > div > a");
+                var querySelector = productElement.QuerySelector("div > div > div > a");
 
                 if (!(querySelector is IHtmlAnchorElement))
-                    return Result<string>.CreateFailed();
+                    return Result<string>.CreateFailed("ELEMENT_CAST_ERROR");
 
                 var cardUrl = (querySelector as IHtmlAnchorElement).Href;
 
@@ -145,29 +166,29 @@ namespace ParserFacebookShops.Services.Implementation
             }
         }
 
-        public string GetName(IElement element) =>
-            element.QuerySelector("div > div > div > a > strong")?.InnerHtml;
-
-        public async Task SetAuthentication(string shopId)
+        public async Task<IResult> SetAuthenticationForFacebookAsync()
         {
             try
             {
                 //Implementation authentication with AngleSharp
-                Context.OpenAsync(shopId).Wait();
+                Context.OpenAsync("https://www.facebook.com").Wait();
                 (Context.Active.QuerySelector<IHtmlInputElement>("input#email")).Value = "bodik_kz@ukr.net";
                 (Context.Active.QuerySelector<IHtmlInputElement>("input#pass")).Value = "201001chepa";
 
                 await (Context.Active.QuerySelector("#loginbutton").Children.FirstOrDefault() as IHtmlInputElement)
                     .SubmitAsync();
 
-                HasAuthentication = true;
-
-                //return Result.CreateSuccess();
+                return Result.CreateSuccess();
             }
-            catch (Exception e)
+            catch
             {
-               //return Result.CreateFailed("AUTHENTICATION_ERROR");
+                return Result.CreateFailed("AUTHENTICATION_ERROR");
             }
+        }
+
+        public void Dispose()
+        {
+            _puppeteerSharpParser?.Dispose();
         }
     }
 }

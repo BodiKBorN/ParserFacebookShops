@@ -1,21 +1,13 @@
-﻿using AngleSharp;
-using AngleSharp.Dom;
+﻿using System;
 using ParserFacebookShops.Entities;
 using ParserFacebookShops.Models.Abstractions;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation.Generics;
 using ParserFacebookShops.Services.Abstractions;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Web;
-using AngleSharp.Html.Dom;
-using AngleSharp.Html.Parser;
-using PuppeteerSharp;
 
 namespace ParserFacebookShops.Services.Implementation
 {
@@ -23,9 +15,7 @@ namespace ParserFacebookShops.Services.Implementation
     {
         private const string MagicSpace = " ";
 
-
-
-        public IResult<Price> ParsePrice(string htmlPrice)
+        public IResult<Price> GetPrice(string htmlPrice)
         {
             try
             {
@@ -36,15 +26,16 @@ namespace ParserFacebookShops.Services.Implementation
 
                 var price = new Price();
 
-                if (htmlDecode.Contains(MagicSpace))
-                    price.Total = htmlDecode.Replace(MagicSpace, " ");
+                price.Total = htmlDecode.Contains(MagicSpace) 
+                    ? htmlDecode.Replace(MagicSpace, " ") 
+                    : htmlDecode;
 
-                var cost = GetCost(htmlDecode);
+                var cost = ParseCost(htmlDecode);
 
                 if (cost.Success)
                     price.Cost = cost.Data;
 
-                var currency = GetCurrency(htmlDecode);
+                var currency = ParseCurrency(htmlDecode);
 
                 if (currency.Success)
                     price.Currency = currency.Data;
@@ -57,17 +48,27 @@ namespace ParserFacebookShops.Services.Implementation
             }
         }
 
-        private IResult GetImage()
+        public string ParseImageUrl(string imageInnerText)
         {
-            throw new System.NotImplementedException();
+            try
+            {
+                if (imageInnerText == null)
+                    return null;
+
+                var regex = new Regex("(http|https)+:\\/\\/\\S+[^\\\"\\)]");
+
+                var match = regex.Match(imageInnerText).Value;
+
+                return match;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
         }
 
-        private IResult GetDescription()
-        {
-            throw new System.NotImplementedException();
-        }
-
-        private IResult<double> GetCost(string htmlDecode)
+        private IResult<double> ParseCost(string htmlDecode)
         {
             try
             {
@@ -92,7 +93,7 @@ namespace ParserFacebookShops.Services.Implementation
             }
         }
 
-        private IResult<string> GetCurrency(string htmlDecode)
+        private IResult<string> ParseCurrency(string htmlDecode)
         {
             try
             {
