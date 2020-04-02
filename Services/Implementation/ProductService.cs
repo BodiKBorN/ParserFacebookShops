@@ -44,27 +44,26 @@ namespace ParserFacebookShops.Services.Implementation
             }
             catch
             {
-                return Result<Price>.CreateFailed("ERROR_GET_PRICE");
+                return Result<Price>.CreateFailed("GETTING_PRICE_ERROR");
             }
         }
 
-        public string ParseImageUrl(string imageInnerText)
+        public IResult<string> ParseImageUrl(string imageInnerText)
         {
             try
             {
                 if (imageInnerText == null)
-                    return null;
+                    return Result<string>.CreateSuccess("NOT_CORRECT_DATA");
 
                 var regex = new Regex("(http|https)+:\\/\\/\\S+[^\\\"\\)]");
 
                 var match = regex.Match(imageInnerText).Value;
 
-                return match;
+                return Result<string>.CreateSuccess(match);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                return Result<string>.CreateFailed("PARSING_IMAGE_URL_ERROR");
             }
         }
 
@@ -89,7 +88,7 @@ namespace ParserFacebookShops.Services.Implementation
             }
             catch
             {
-                return Result<double>.CreateFailed("ERROR_GET_COST");
+                return Result<double>.CreateFailed("PARSING_COST_ERROR");
             }
         }
 
@@ -106,7 +105,7 @@ namespace ParserFacebookShops.Services.Implementation
             }
             catch
             {
-                return Result<string>.CreateFailed("ERROR_GET_CURRENCY");
+                return Result<string>.CreateFailed("PARSING_CURRENCY_ERROR");
             }
         }
     }

@@ -18,7 +18,7 @@ namespace ParserFacebookShops.Services.Implementation
 
         public PuppeteerSharpParser()
         {
-            Context = Task.Run(GetBrowserAsync).Result;
+            Context = GetBrowserAsync().Result;
             _productService = new ProductService();
         }
 
@@ -42,8 +42,6 @@ namespace ParserFacebookShops.Services.Implementation
         {
             try
             {
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in PuppeteerSharp GetHrefAllProductsPageAsync");
-
                 using var page = await OpenPageAsync(address);
 
                 await page
@@ -60,8 +58,6 @@ namespace ParserFacebookShops.Services.Implementation
 
                 await page.CloseAsync();
 
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " out PuppeteerSharp GetHrefAllProductsPageAsync");
-
                 return href == null
                     ? Result<string>.CreateFailed("PAGE_HREF_NOT_FOUND")
                     : Result<string>.CreateSuccess(href);
@@ -76,10 +72,7 @@ namespace ParserFacebookShops.Services.Implementation
         {
             try
             {
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in PuppeteerSharp GetProductCard");
                 using var page = await OpenPageAsync(cardUrl);
-
-                //await page.SetJavaScriptEnabledAsync(false);
 
                 var contentAsync = await page.GetContentAsync();
 
@@ -87,7 +80,7 @@ namespace ParserFacebookShops.Services.Implementation
                     .EvaluateExpressionAsync<string>("document.querySelector('#u_0_y > div').innerText");
 
                 var htmlPrice = await page
-                    .EvaluateExpressionAsync<string>("document.querySelector('#u_0_y > div > div > div > div > div > div').innerHTML");
+                    .EvaluateExpressionAsync<string>("document.querySelector('#u_0_y > div > div > div > div > div > div').innerText");
 
                 var category = await page
                     .EvaluateExpressionAsync<string>("(function() { let node = document.querySelector('#u_0_y > div > div > span > div > div > div > a > span'); return !!node ? node.innerText : null})()");
@@ -103,13 +96,16 @@ namespace ParserFacebookShops.Services.Implementation
 
                 var imageUrl = (await page.EvaluateExpressionAsync("Array.from(document.querySelectorAll('div > div > div > div > div > div > div > div > div > div > div > div._6e_ > div')).map(x=>x.style.backgroundImage)"))
                     .Values<string>()
-                    .Select(htmlImageUrl => _productService.ParseImageUrl(htmlImageUrl))
+                    .Select(htmlImageUrl => _productService.ParseImageUrl(htmlImageUrl).Data)
                     .ToList();
 
                 var price = _productService.GetPrice(htmlPrice);
 
-                if (name == null && htmlPrice == null && !price.Success)
-                    return Result<Product>.CreateFailed();
+                if (name == null && htmlPrice == null)
+                    return Result<Product>.CreateFailed("ITEM_DATA_NOT_FOUND");
+
+                if (!price.Success)
+                    return Result<Product>.CreateFailed(price.Message);
 
                 var product = new Product()
                 {
@@ -121,7 +117,7 @@ namespace ParserFacebookShops.Services.Implementation
                 };
 
                 await page.CloseAsync();
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " out PuppeteerSharp GetProductCard");
+
                 return Result<Product>.CreateSuccess(product);
             }
             catch(Exception e)
@@ -154,6 +150,7 @@ namespace ParserFacebookShops.Services.Implementation
             }
             catch (Exception e)
             {
+                //return Console.WriteLine("GETTING_BROWSER_ERROR");
                 throw;
             }
         }

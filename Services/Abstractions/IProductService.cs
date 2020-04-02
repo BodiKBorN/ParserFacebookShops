@@ -12,6 +12,6 @@ namespace ParserFacebookShops.Services.Abstractions
     {
         IResult<Price> GetPrice(string htmlPrice);
 
-        string ParseImageUrl(string imageInnerText);
+        IResult<string> ParseImageUrl(string imageInnerText);
     }
 }

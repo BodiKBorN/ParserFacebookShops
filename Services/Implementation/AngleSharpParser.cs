@@ -43,7 +43,7 @@ namespace ParserFacebookShops.Services.Implementation
             }
         }
 
-        public async Task<IHtmlCollection<IElement>> GetElementsFromShopPageAsync(string shopId)
+        public async Task<IResult<IHtmlCollection<IElement>>> GetElementsFromShopPageAsync(string shopId)
         {
             try
             {
@@ -55,51 +55,45 @@ namespace ParserFacebookShops.Services.Implementation
 
                 document.Close();
 
-                return selectorResult;
+                return Result<IHtmlCollection<IElement>>.CreateSuccess(selectorResult);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                return Result<IHtmlCollection<IElement>>.CreateFailed("GETTING_ELEMENTS_FROM_SHOP_PAGE_ERROR");
             }
         }
 
-        public async Task<IHtmlCollection<IElement>> GetElementsFromAllProductPageAsync(string shopUrl)
+        public async Task<IResult<IHtmlCollection<IElement>>> GetElementsFromAllProductPageAsync(string shopUrl)
         {
             try
             {
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in AngleSharp GetElementsFromAllProductPageAsync");
+                var hrefAllProductsPage = await _puppeteerSharpParser.GetHrefAllProductsPageAsync(shopUrl);
 
-                var href = await _puppeteerSharpParser.GetHrefAllProductsPageAsync(shopUrl);
+                if (!hrefAllProductsPage.Success)
+                    return Result<IHtmlCollection<IElement>>.CreateFailed(hrefAllProductsPage.Message);
 
-                if (!href.Success)
-                    return null;
-
-                using var document = await Context.OpenAsync(href.Data);
+                using var document = await Context.OpenAsync(hrefAllProductsPage.Data);
 
                 var result = document.QuerySelectorAll("tbody > tr td");
 
                 document.Close();
-                Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " out AngleSharp GetElementsFromAllProductPageAsync");
-                return result;
+              
+                return Result<IHtmlCollection<IElement>>.CreateSuccess(result);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                return Result<IHtmlCollection<IElement>>.CreateFailed("GETTING_ELEMENTS_FROM_ALL_PRODUCT_PAGE_ERROR");
             }
         }
 
-        public List<Task<Product>> GetProducts(IHtmlCollection<IElement> productElements)
+        public IResult<Task<Product>[]> GetProducts(IHtmlCollection<IElement> productElements)
         {
             try
             {
-                return productElements
+                var result = productElements
                     .Where(x => GetName(x) != null)
                     .Select(async x =>
                     {
-                        Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " in select AngleSharp GetProducts");
-
                         var productCardHref = GetProductCardHref(x);
 
                         if (!productCardHref.Success)
@@ -107,36 +101,18 @@ namespace ParserFacebookShops.Services.Implementation
 
                         var productCard = await _puppeteerSharpParser.GetProductCard(productCardHref.Data);
 
-                        //var product = new Product();
+                        if (!productCard.Success)
+                            return null;
 
-                        //product.Name = GetName(x);
-
-                        //var price = _productService.GetPrice(x.QuerySelector("div > div > div > div span")?.InnerHtml
-                        //                                       ?? x.QuerySelector("div > div > div > div")?.InnerHtml);
-
-                        //if (price.Success)
-                        //    product.Price = price.Data;
-
-                        //var pastPrice = _productService.GetPrice(x.QuerySelector("div > div > div > div span:nth-child(2)")?.InnerHtml);
-
-                        //if (pastPrice.Success)
-                        //    product.PastPrice = pastPrice.Data;
-
-                        //Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " 3 ----past");
-
-                        //var image = x.QuerySelector("div > div > a img");
-
-                        ////if (image != null)
-                        ////    product.ImageUrl = (image as IHtmlImageElement)?.Source;
-                        Console.WriteLine(Thread.CurrentThread.ManagedThreadId + " out select AngleSharp GetProducts");
                         return productCard.Data;
                     })
-                    .ToList();
+                    .ToArray();
+
+                return Result<Task<Product>[]>.CreateSuccess(result);
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
-                throw;
+                return Result<Task<Product>[]>.CreateFailed("GETTING_PRODUCTS_ERROR");
             }
         }
 
@@ -159,10 +135,9 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<string>.CreateSuccess(cardUrl);
             }
-            catch (Exception e)
+            catch
             {
-                Console.WriteLine(e);
-                throw;
+                return Result<string>.CreateFailed("GETTING_CARD_HREF_ERROR");
             }
         }
 

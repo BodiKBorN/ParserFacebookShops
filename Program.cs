@@ -14,8 +14,7 @@ namespace ParserFacebookShops
             
             using var shopService = new ShopService();
 
-            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/BonimshopUA")).Data;
-            
+            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/Shop-and-Go-105766151037772")).Data;
             stopwatch.Stop();
             var stopwatchElapsed = stopwatch.Elapsed;
 

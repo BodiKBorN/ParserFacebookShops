@@ -29,16 +29,19 @@ namespace ParserFacebookShops.Services.Implementation
 
                 var elementsFromShopPage = await _angleSharpParser.GetElementsFromShopPageAsync(shopId);
 
-                var productElements = elementsFromShopPage.Length != 0
+                var productElements = elementsFromShopPage.Data.Length != 0
                     ? elementsFromShopPage
-                    : await _angleSharpParser.GetElementsFromAllProductPageAsync(shopId);
+                    : (await _angleSharpParser.GetElementsFromAllProductPageAsync(shopId));
 
-                if (productElements.Length == 0)
-                    return Result<List<Product>>.CreateFailed("ELEMENTS_NOT_FOUND");
+                if (!productElements.Success && productElements.Data.Length == 0)
+                    return Result<List<Product>>.CreateFailed(productElements.Message);
 
-                var productModels = _angleSharpParser.GetProducts(productElements);
+                var productModels = _angleSharpParser.GetProducts(productElements.Data);
 
-                var products = await Task.WhenAll(productModels);
+                if (!productModels.Success)
+                    return Result<List<Product>>.CreateFailed(productModels.Message);
+
+                var products = await Task.WhenAll(productModels.Data);
 
                 return Result<List<Product>>.CreateSuccess(products.ToList());
             }
