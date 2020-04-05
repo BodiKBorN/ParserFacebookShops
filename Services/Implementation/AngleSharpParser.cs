@@ -7,9 +7,7 @@ using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation;
 using ParserFacebookShops.Models.Implementation.Generics;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Implementation
@@ -38,7 +36,7 @@ namespace ParserFacebookShops.Services.Implementation
             }
             catch (Exception e)
             {
-                Console.WriteLine(e);
+                Console.WriteLine(e.Message);
                 throw;
             }
         }
@@ -57,7 +55,7 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<IHtmlCollection<IElement>>.CreateSuccess(selectorResult);
             }
-            catch (Exception e)
+            catch 
             {
                 return Result<IHtmlCollection<IElement>>.CreateFailed("GETTING_ELEMENTS_FROM_SHOP_PAGE_ERROR");
             }
@@ -77,10 +75,10 @@ namespace ParserFacebookShops.Services.Implementation
                 var result = document.QuerySelectorAll("tbody > tr td");
 
                 document.Close();
-              
+
                 return Result<IHtmlCollection<IElement>>.CreateSuccess(result);
             }
-            catch (Exception e)
+            catch
             {
                 return Result<IHtmlCollection<IElement>>.CreateFailed("GETTING_ELEMENTS_FROM_ALL_PRODUCT_PAGE_ERROR");
             }

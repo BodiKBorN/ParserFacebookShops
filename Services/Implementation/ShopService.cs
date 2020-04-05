@@ -45,7 +45,7 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<List<Product>>.CreateSuccess(products.ToList());
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 return Result<List<Product>>.CreateFailed("ERROR_GET_PRODUCTS");
             }

@@ -5,7 +5,6 @@ using ParserFacebookShops.Services.Abstractions;
 using PuppeteerSharp;
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Implementation
@@ -32,8 +31,9 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return page;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
+                Console.WriteLine(e.Message);
                 throw;
             }
         }
@@ -76,14 +76,17 @@ namespace ParserFacebookShops.Services.Implementation
 
                 var contentAsync = await page.GetContentAsync();
 
+                var pageLanguage = await page
+                    .EvaluateExpressionAsync<string>("document.querySelector('html').getAttribute('lang')");
+                
                 var name = await page
-                    .EvaluateExpressionAsync<string>("document.querySelector('#u_0_y > div').innerText");
+                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > div'); return !!node ? node.innerText : null})()");
 
                 var htmlPrice = await page
-                    .EvaluateExpressionAsync<string>("document.querySelector('#u_0_y > div > div > div > div > div > div').innerText");
+                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > div > div > div > div > div > div'); return !!node ? node.innerText : null})()");
 
                 var category = await page
-                    .EvaluateExpressionAsync<string>("(function() { let node = document.querySelector('#u_0_y > div > div > span > div > div > div > a > span'); return !!node ? node.innerText : null})()");
+                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > div > div > span > div > div > div > a > span'); return !!node ? node.innerText : null})()");
 
                 var showMoreButton = await page
                     .QuerySelectorAsync("#u_0_y > ul > li > div > div");
@@ -92,14 +95,14 @@ namespace ParserFacebookShops.Services.Implementation
                     await showMoreButton.ClickAsync();
 
                 var description = await page
-                    .EvaluateExpressionAsync<string>("document.querySelector('#u_0_y > ul > li > div._1xwp').innerText");
+                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > ul > li > div._1xwp'); return !!node ? node.innerText : null})()");
 
-                var imageUrl = (await page.EvaluateExpressionAsync("Array.from(document.querySelectorAll('div > div > div > div > div > div > div > div > div > div > div > div._6e_ > div')).map(x=>x.style.backgroundImage)"))
+                var imagesUrl = (await page.EvaluateExpressionAsync("Array.from(document.querySelectorAll('div > div > div > div > div > div > div > div > div > div > div > div._6e_ > div')).map(x=>x.style.backgroundImage)"))
                     .Values<string>()
                     .Select(htmlImageUrl => _productService.ParseImageUrl(htmlImageUrl).Data)
                     .ToList();
 
-                var price = _productService.GetPrice(htmlPrice);
+                var price = _productService.GetPrice(htmlPrice,pageLanguage);
 
                 if (name == null && htmlPrice == null)
                     return Result<Product>.CreateFailed("ITEM_DATA_NOT_FOUND");
@@ -113,14 +116,14 @@ namespace ParserFacebookShops.Services.Implementation
                     Price = price.Data,
                     Description = description,
                     Category = category,
-                    ImageUrl = imageUrl
+                    ImagesUrl = imagesUrl
                 };
 
                 await page.CloseAsync();
 
                 return Result<Product>.CreateSuccess(product);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 return Result<Product>.CreateFailed("GETTING_PRODUCT_CARD_ERROR");
             }
@@ -148,9 +151,9 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return browser;
             }
-            catch (Exception e)
+            catch
             {
-                //return Console.WriteLine("GETTING_BROWSER_ERROR");
+                Console.WriteLine("GETTING_BROWSER_ERROR");
                 throw;
             }
         }

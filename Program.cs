@@ -14,7 +14,7 @@ namespace ParserFacebookShops
             
             using var shopService = new ShopService();
 
-            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/Shop-and-Go-105766151037772")).Data;
+            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/beautygiftshop24")).Data;
             stopwatch.Stop();
             var stopwatchElapsed = stopwatch.Elapsed;
 
@@ -22,7 +22,7 @@ namespace ParserFacebookShops
 
             foreach (var variable in shop)
             {
-                Console.WriteLine($"Name: {variable.Name}\nPrice: {variable.Price?.Cost}{variable.Price?.Currency}\nTotal: {variable.Price?.Total }\nDescription: {variable.Description}\nImage: {variable.ImageUrl}\n");
+                Console.WriteLine($"Name: {variable.Name}\nPrice: {variable.Price?.Cost}{variable.Price?.Currency}\nTotal: {variable.Price?.Total }\nDescription: {variable.Description}\nImage: {variable.ImagesUrl}\n");
             }
 
             //Console.ReadKey();
