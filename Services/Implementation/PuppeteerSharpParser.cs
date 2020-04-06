@@ -45,21 +45,31 @@ namespace ParserFacebookShops.Services.Implementation
                 using var page = await OpenPageAsync(address);
                
                 await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
-                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
-                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
-                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
-                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
 
-                await page.WaitForTimeoutAsync(3000);
-                var contentAsync = await page.GetContentAsync();
+                await page.WaitForTimeoutAsync(1000);
+
                 var selectorResult = await page.QuerySelectorAsync("div._4-u8 ul:last-child > li:last-child > div > div > div > a");
+                
+                if (selectorResult == null)
+                {
+                    for (var i = 0; i < 10; i++)
+                    {
+                        await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
+                        await page.WaitForTimeoutAsync(2000);
+                        selectorResult = await page.QuerySelectorAsync("div._4-u8 ul:last-child > li:last-child > div > div > div > a");
+                        if (selectorResult != null)
+                        {
+                            break;
+                        }
+                    }
+                }
 
                 if (selectorResult == null)
                     return Result<string>.CreateFailed("SELECT_ELEMENTS_ERROR");
 
                 var href = await (await selectorResult.GetPropertyAsync("href")).JsonValueAsync<string>()
                            ?? await page.EvaluateExpressionAsync<string>(
-                               "(function() {let node = document.querySelector('#u_0_4 > ul > li:last-child > div > div > div > a'); return !!node ? node.href : null})()");
+                               "(function() {let node = document.querySelector('div._4-u8 ul:last-child > li:last-child > div > div > div > a'); return !!node ? node.href : null})()");
 
                 await page.CloseAsync();
 
@@ -67,7 +77,7 @@ namespace ParserFacebookShops.Services.Implementation
                     ? Result<string>.CreateFailed("PAGE_HREF_NOT_FOUND")
                     : Result<string>.CreateSuccess(href);
             }
-            catch (Exception e)
+            catch
             {
                 return Result<string>.CreateFailed("ERROR_GET_ALL_PRODUCT_PAGE");
             }
@@ -132,7 +142,7 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<Product>.CreateSuccess(product);
             }
-            catch (Exception e)
+            catch
             {
                 return Result<Product>.CreateFailed("GETTING_PRODUCT_CARD_ERROR");
             }
@@ -153,8 +163,8 @@ namespace ParserFacebookShops.Services.Implementation
                 var page = await browser.NewPageAsync();
 
                 await page.GoToAsync("https://www.facebook.com/");
-                await page.EvaluateExpressionAsync("document.querySelector('#email').value = 'bodik_kz@ukr.net'");
-                await page.EvaluateExpressionAsync("document.querySelector('#pass').value = '201001chepa'");
+                await page.EvaluateExpressionAsync($"document.querySelector('#email').value = '{AuthenticationData.Login}'");
+                await page.EvaluateExpressionAsync($"document.querySelector('#pass').value = '{AuthenticationData.Password}'");
                 await page.EvaluateExpressionAsync("document.querySelector('#loginbutton').click()");
                 await page.WaitForNavigationAsync();
 

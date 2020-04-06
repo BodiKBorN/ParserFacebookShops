@@ -11,10 +11,12 @@ namespace ParserFacebookShops.Services.Implementation
 {
     public class ShopService : IShopService, IDisposable
     {
-
         private readonly AngleSharpParser _angleSharpParser;
-        public ShopService()
+
+        public ShopService(string login, string password)
         {
+            AuthenticationData.Login = login;
+            AuthenticationData.Password = password;
             _angleSharpParser = new AngleSharpParser();
         }
 
@@ -22,6 +24,9 @@ namespace ParserFacebookShops.Services.Implementation
         {
             try
             {
+                if (shopId.EndsWith("/"))
+                    shopId.Remove(shopId.LastIndexOf("/", StringComparison.Ordinal));
+
                 if (!shopId.EndsWith("/shop"))
                     shopId += "/shop";
 
@@ -43,7 +48,7 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<List<Product>>.CreateSuccess(products.ToList());
             }
-            catch (Exception e)
+            catch
             {
                 return Result<List<Product>>.CreateFailed("ERROR_GET_PRODUCTS");
             }

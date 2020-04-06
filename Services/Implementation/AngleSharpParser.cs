@@ -31,7 +31,7 @@ namespace ParserFacebookShops.Services.Implementation
                 var document = await Context.OpenAsync(url);
 
                 await document.WaitForReadyAsync();
-
+                
                 return document;
             }
             catch (Exception e)
@@ -108,7 +108,7 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<Task<Product>[]>.CreateSuccess(result);
             }
-            catch (Exception e)
+            catch
             {
                 return Result<Task<Product>[]>.CreateFailed("GETTING_PRODUCTS_ERROR");
             }
@@ -145,8 +145,8 @@ namespace ParserFacebookShops.Services.Implementation
             {
                 //Implementation authentication with AngleSharp
                 Context.OpenAsync("https://www.facebook.com").Wait();
-                (Context.Active.QuerySelector<IHtmlInputElement>("input#email")).Value = "bodik_kz@ukr.net";
-                (Context.Active.QuerySelector<IHtmlInputElement>("input#pass")).Value = "201001chepa";
+                (Context.Active.QuerySelector<IHtmlInputElement>("input#email")).Value = AuthenticationData.Login;
+                (Context.Active.QuerySelector<IHtmlInputElement>("input#pass")).Value = AuthenticationData.Password;
 
                 await (Context.Active.QuerySelector("#loginbutton").Children.FirstOrDefault() as IHtmlInputElement)
                     .SubmitAsync();

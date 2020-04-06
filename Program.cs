@@ -12,9 +12,9 @@ namespace ParserFacebookShops
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             
-            using var shopService = new ShopService();
+            using var shopService = new ShopService("bohdanmanager.prland@gmail.com","PRland1234");
 
-            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/youstshop"));
+            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/bespoke.tuning.family/"));
 
             var shopData = shop.Data;
 
