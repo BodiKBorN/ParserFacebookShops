@@ -22,18 +22,16 @@ namespace ParserFacebookShops.Services.Implementation
         {
             try
             {
-                if (!shopId.EndsWith("/"))
-                    shopId += "/";
-
-                shopId += "shop/";
+                if (!shopId.EndsWith("/shop"))
+                    shopId += "/shop";
 
                 var elementsFromShopPage = await _angleSharpParser.GetElementsFromShopPageAsync(shopId);
 
-                var productElements = elementsFromShopPage.Data.Length != 0
+                var productElements = elementsFromShopPage.Success && elementsFromShopPage.Data.Length != 0
                     ? elementsFromShopPage
                     : (await _angleSharpParser.GetElementsFromAllProductPageAsync(shopId));
 
-                if (!productElements.Success && productElements.Data.Length == 0)
+                if (!productElements.Success || productElements.Data.Length == 0)
                     return Result<List<Product>>.CreateFailed(productElements.Message);
 
                 var productModels = _angleSharpParser.GetProducts(productElements.Data);

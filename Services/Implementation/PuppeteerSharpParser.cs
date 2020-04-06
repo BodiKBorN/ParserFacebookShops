@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Implementation
 {
-    public class PuppeteerSharpParser : IDisposable
+    internal class PuppeteerSharpParser : IDisposable
     {
-        private Browser Context { get; }
+        public Browser Context { get; }
 
         private readonly IProductService _productService;
 
@@ -43,18 +43,23 @@ namespace ParserFacebookShops.Services.Implementation
             try
             {
                 using var page = await OpenPageAsync(address);
+               
+                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
+                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
+                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
+                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
+                await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
 
-                await page
-                    .EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
+                await page.WaitForTimeoutAsync(3000);
+                var contentAsync = await page.GetContentAsync();
+                var selectorResult = await page.QuerySelectorAsync("div._4-u8 ul:last-child > li:last-child > div > div > div > a");
 
-                var waitForSelectorResult = await page
-                    .WaitForSelectorAsync("#u_0_4 > ul > li:last-child > div > div > div > a");
-
-                if (waitForSelectorResult == null)
+                if (selectorResult == null)
                     return Result<string>.CreateFailed("SELECT_ELEMENTS_ERROR");
 
-                var href = await (await waitForSelectorResult.GetPropertyAsync("href")).JsonValueAsync<string>()
-                           ?? await page.EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_4 > ul > li:last-child > div > div > div > a'); return !!node ? node.href : null})()");
+                var href = await (await selectorResult.GetPropertyAsync("href")).JsonValueAsync<string>()
+                           ?? await page.EvaluateExpressionAsync<string>(
+                               "(function() {let node = document.querySelector('#u_0_4 > ul > li:last-child > div > div > div > a'); return !!node ? node.href : null})()");
 
                 await page.CloseAsync();
 
@@ -74,19 +79,21 @@ namespace ParserFacebookShops.Services.Implementation
             {
                 using var page = await OpenPageAsync(cardUrl);
 
-                var contentAsync = await page.GetContentAsync();
-
                 var pageLanguage = await page
-                    .EvaluateExpressionAsync<string>("document.querySelector('html').getAttribute('lang')");
+                    .EvaluateExpressionAsync<string>(
+                        "(function() {let node = document.querySelector('html'); return !!node ? node.getAttribute('lang') : null})()");
                 
                 var name = await page
-                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > div'); return !!node ? node.innerText : null})()");
+                    .EvaluateExpressionAsync<string>(
+                        "(function() {let node = document.querySelector('#u_0_y > div'); return !!node ? node.innerText : null})()");
 
                 var htmlPrice = await page
-                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > div > div > div > div > div > div'); return !!node ? node.innerText : null})()");
+                    .EvaluateExpressionAsync<string>(
+                        "(function() {let node = document.querySelector('#u_0_y > div > div > div > div > div > div'); return !!node ? node.innerText : null})()");
 
                 var category = await page
-                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > div > div > span > div > div > div > a > span'); return !!node ? node.innerText : null})()");
+                    .EvaluateExpressionAsync<string>(
+                        "(function() {let node = document.querySelector('#u_0_y > div > div > span > div > div > div > a > span'); return !!node ? node.innerText : null})()");
 
                 var showMoreButton = await page
                     .QuerySelectorAsync("#u_0_y > ul > li > div > div");
@@ -95,9 +102,11 @@ namespace ParserFacebookShops.Services.Implementation
                     await showMoreButton.ClickAsync();
 
                 var description = await page
-                    .EvaluateExpressionAsync<string>("(function() {let node = document.querySelector('#u_0_y > ul > li > div._1xwp'); return !!node ? node.innerText : null})()");
+                    .EvaluateExpressionAsync<string>(
+                        "(function() {let node = document.querySelector('#u_0_y > ul > li > div._1xwp'); return !!node ? node.innerText : null})()");
 
-                var imagesUrl = (await page.EvaluateExpressionAsync("Array.from(document.querySelectorAll('div > div > div > div > div > div > div > div > div > div > div > div._6e_ > div')).map(x=>x.style.backgroundImage)"))
+                var imagesUrl = (await page.EvaluateExpressionAsync(
+                        "Array.from(document.querySelectorAll('div > div > div > div > div > div > div > div > div > div > div > div._6e_ > div')).map(x=>x.style.backgroundImage)"))
                     .Values<string>()
                     .Select(htmlImageUrl => _productService.ParseImageUrl(htmlImageUrl).Data)
                     .ToList();
@@ -140,7 +149,7 @@ namespace ParserFacebookShops.Services.Implementation
                     Headless = true
                 });
 
-                //Authentication 
+                //Authentication for Facebook
                 var page = await browser.NewPageAsync();
 
                 await page.GoToAsync("https://www.facebook.com/");

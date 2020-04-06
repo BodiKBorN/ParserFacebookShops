@@ -4,16 +4,12 @@ using ParserFacebookShops.Models.Implementation.Generics;
 using ParserFacebookShops.Services.Abstractions;
 using System;
 using System.Globalization;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Web;
 
 namespace ParserFacebookShops.Services.Implementation
 {
     public class ProductService : IProductService
     {
-        private const string MagicSpace = " ";
-
         public IResult<Price> GetPrice(string htmlPrice, string pageLanguage)
         {
             try
@@ -21,53 +17,50 @@ namespace ParserFacebookShops.Services.Implementation
                 if (htmlPrice == null)
                     return Result<Price>.CreateFailed("ELEMENT_NOT_FOUND");
 
-                var htmlDecode = HttpUtility.HtmlDecode(htmlPrice);
-
-
                 // Get current culture's NumberFormatInfo object.
-                NumberFormatInfo nfi = CultureInfo.GetCultureInfo(pageLanguage).NumberFormat;
+                NumberFormatInfo nfi = pageLanguage != null
+                    ? CultureInfo.GetCultureInfo(pageLanguage).NumberFormat
+                    : CultureInfo.CurrentCulture.NumberFormat;
 
                 // Assign needed property values to variables.
-                bool symbolPrecedesIfPositive = nfi.CurrencyPositivePattern % 2 == 0;
-                string groupSeparator = nfi.CurrencyGroupSeparator;
-                string decimalSeparator = nfi.CurrencyDecimalSeparator;
+                var symbolPrecedesIfPositive = nfi.CurrencyPositivePattern % 2 == 0;
+                var groupSeparator = nfi.CurrencyGroupSeparator;
+                var decimalSeparator = nfi.CurrencyDecimalSeparator;
 
-                //string currencySymbol = nfi.CurrencySymbol;
-                string currencySymbol = ParseCurrency(htmlPrice).Data;
+                //string currencySymbol = provider.CurrencySymbol;
+                var parseCurrency = ParseCurrency(htmlPrice);
 
-                if (currencySymbol == "грн|грн.")
+                var currencySymbol = parseCurrency.Success
+                    ? parseCurrency.Data
+                    : nfi.CurrencySymbol;
+
+                if (currencySymbol.Contains("грн"))
                     symbolPrecedesIfPositive = false;
 
                 // Form regular expression pattern.
-                string pattern = Regex.Escape(symbolPrecedesIfPositive ? currencySymbol + "." : "") +
-                                 @"\s*" + "([0-9]{0,3}(" + groupSeparator + "[0-9]{3})*(" +
-                                 Regex.Escape(decimalSeparator) + "[0-9]+)?)" + @"\s*" +
-                                 Regex.Escape(!symbolPrecedesIfPositive ? currencySymbol + "." : "");
-
-                string pattern2 = (symbolPrecedesIfPositive ? Regex.Escape(currencySymbol) + "\\.?" : "") +
-                                @"\s*" + "([0-9]{0,3}(" + groupSeparator + "[0-9]{3})*(" + 
-                                Regex.Escape(decimalSeparator) + "[0-9]+)?)" + @"\s*" + 
-                                (!symbolPrecedesIfPositive ? Regex.Escape(currencySymbol) + "\\.?": "");
-                
+                var pattern = (symbolPrecedesIfPositive ? Regex.Escape(currencySymbol) + "\\.?" : "") +
+                                  @"\s*" + "([0-9]{0,3}(" + groupSeparator + "[0-9]{3})*(" +
+                                  Regex.Escape(decimalSeparator) + "[0-9]+)?)" + @"\s*" +
+                                  (!symbolPrecedesIfPositive ? Regex.Escape(currencySymbol) + "\\.?" : "");
 
                 // Get text that matches regular expression pattern.
-                var value = Regex.Match(htmlPrice, pattern2, RegexOptions.IgnorePatternWhitespace);
+                var value = Regex.Match(htmlPrice, pattern, RegexOptions.IgnorePatternWhitespace);
 
-                if (value.Value == string.Empty)
-                    return Result<Price>.CreateFailed();
+                if (value.Value.Equals(string.Empty))
+                    return Result<Price>.CreateFailed("PRICE_NOT_MATCH");
 
-                var price = new Price();
+                var cost = ParseCost(value.Groups[1].Value, nfi);
 
-                var cost = ParseCost(value.Groups[1].Value,nfi);
+                if (!cost.Success)
+                    return Result<Price>.CreateFailed(cost.Message);
 
-                if (cost.Success)
-                    price.Cost = cost.Data;
+                var price = new Price
+                {
+                    Cost = cost.Data,
+                    Currency = currencySymbol,
+                    Total = value.Value
+                };
 
-                var currency = currencySymbol;
-
-                //if (currency.Success)
-                    price.Currency = currency;
-                    price.Total = value.Value;
                 return Result<Price>.CreateSuccess(price);
             }
             catch
@@ -89,30 +82,20 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<string>.CreateSuccess(match);
             }
-            catch (Exception e)
+            catch
             {
                 return Result<string>.CreateFailed("PARSING_IMAGE_URL_ERROR");
             }
         }
 
-        private IResult<decimal> ParseCost(string htmlDecode, IFormatProvider nfi)
+        private IResult<decimal> ParseCost(string value, IFormatProvider provider)
         {
             try
             {
-                if (htmlDecode == null)
+                if (value == null || value.Equals(string.Empty))
                     return Result<decimal>.CreateFailed("NOT_CORRECT_DATA");
 
-                var value = htmlDecode;
-
-                //var regex = new Regex(@"(\d+(\,|\.)?\d+)|(\d)");
-
-                //var value = regex.Match(htmlDecode.Replace(MagicSpace, string.Empty)).Value;
-
-                //var numberFormat = (NumberFormatInfo)CultureInfo.CurrentCulture.NumberFormat.Clone();
-
-                //numberFormat.NumberDecimalSeparator = new Regex(@"(\,|\.)").Match(value).Value;
-
-                return decimal.TryParse(value, NumberStyles.Currency, nfi, out var cost)
+                return decimal.TryParse(value, NumberStyles.Currency, provider, out var cost)
                     ? Result<decimal>.CreateSuccess(cost)
                     : Result<decimal>.CreateFailed("COST_NOT_PARSE");
             }
@@ -122,18 +105,13 @@ namespace ParserFacebookShops.Services.Implementation
             }
         }
 
-        private IResult<string> ParseCurrency(string htmlDecode)
+        private IResult<string> ParseCurrency(string htmlPrice)
         {
             try
             {
-                //var whiteSpaces = new[] { ' ', ' ' };
-                //if (htmlDecode == null && !htmlDecode.Any(x => whiteSpaces.Contains(x)))
-                //    Result<string>.CreateFailed("NOT_CORRECT_DATA");
-                //var result = htmlDecode?.Substring(htmlDecode.LastIndexOfAny(whiteSpaces)).Trim();
-
                 var regex = new Regex("(\\s?)([^\\d.,\\s ]+)\\1");
 
-                var value = regex.Match(htmlDecode).Value;
+                var value = regex.Match(htmlPrice).Value;
 
                 return Result<string>.CreateSuccess(value);
             }

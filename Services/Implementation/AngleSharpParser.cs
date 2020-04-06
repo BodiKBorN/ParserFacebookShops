@@ -55,7 +55,7 @@ namespace ParserFacebookShops.Services.Implementation
 
                 return Result<IHtmlCollection<IElement>>.CreateSuccess(selectorResult);
             }
-            catch 
+            catch
             {
                 return Result<IHtmlCollection<IElement>>.CreateFailed("GETTING_ELEMENTS_FROM_SHOP_PAGE_ERROR");
             }

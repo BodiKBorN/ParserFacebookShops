@@ -14,13 +14,17 @@ namespace ParserFacebookShops
             
             using var shopService = new ShopService();
 
-            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/beautygiftshop24")).Data;
+            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/youstshop"));
+
+            var shopData = shop.Data;
+
             stopwatch.Stop();
+
             var stopwatchElapsed = stopwatch.Elapsed;
 
             Console.WriteLine("\tProducts\t\n ---------------------------\n ");
 
-            foreach (var variable in shop)
+            foreach (var variable in shopData)
             {
                 Console.WriteLine($"Name: {variable.Name}\nPrice: {variable.Price?.Cost}{variable.Price?.Currency}\nTotal: {variable.Price?.Total }\nDescription: {variable.Description}\nImage: {variable.ImagesUrl}\n");
             }
