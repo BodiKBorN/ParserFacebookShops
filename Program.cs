@@ -14,9 +14,9 @@ namespace ParserFacebookShops
             
             using var shopService = new ShopService("bohdanmanager.prland@gmail.com","PRland1234");
 
-            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/bespoke.tuning.family/"));
+            var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/Shop-and-Go-105766151037772"));
 
-            var shopData = shop.Data;
+            var shopProducts = shop.Data;
 
             stopwatch.Stop();
 
@@ -24,7 +24,7 @@ namespace ParserFacebookShops
 
             Console.WriteLine("\tProducts\t\n ---------------------------\n ");
 
-            foreach (var variable in shopData)
+            foreach (var variable in shopProducts)
             {
                 Console.WriteLine($"Name: {variable.Name}\nPrice: {variable.Price?.Cost}{variable.Price?.Currency}\nTotal: {variable.Price?.Total }\nDescription: {variable.Description}\nImage: {variable.ImagesUrl}\n");
             }

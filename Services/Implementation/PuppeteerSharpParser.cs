@@ -5,6 +5,7 @@ using ParserFacebookShops.Services.Abstractions;
 using PuppeteerSharp;
 using System;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Implementation
@@ -27,7 +28,10 @@ namespace ParserFacebookShops.Services.Implementation
             {
                 var page = Context.NewPageAsync().Result;
 
-                await page.GoToAsync(address);
+                var response = await page.GoToAsync(address);
+
+                if (response.Status != HttpStatusCode.OK)
+                    return null;
 
                 return page;
             }

@@ -25,14 +25,17 @@ namespace ParserFacebookShops.Services.Implementation
             try
             {
                 if (shopId.EndsWith("/"))
-                    shopId.Remove(shopId.LastIndexOf("/", StringComparison.Ordinal));
+                    shopId = shopId.Remove(shopId.LastIndexOf("/", StringComparison.Ordinal));
 
                 if (!shopId.EndsWith("/shop"))
                     shopId += "/shop";
 
                 var elementsFromShopPage = await _angleSharpParser.GetElementsFromShopPageAsync(shopId);
 
-                var productElements = elementsFromShopPage.Success && elementsFromShopPage.Data.Length != 0
+                if (!elementsFromShopPage.Success)
+                    return Result<List<Product>>.CreateFailed(elementsFromShopPage.Message);
+
+                var productElements = elementsFromShopPage.Data.Length != 0
                     ? elementsFromShopPage
                     : (await _angleSharpParser.GetElementsFromAllProductPageAsync(shopId));
 

@@ -8,6 +8,7 @@ using ParserFacebookShops.Models.Implementation;
 using ParserFacebookShops.Models.Implementation.Generics;
 using System;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace ParserFacebookShops.Services.Implementation
@@ -31,7 +32,10 @@ namespace ParserFacebookShops.Services.Implementation
                 var document = await Context.OpenAsync(url);
 
                 await document.WaitForReadyAsync();
-                
+
+                if (document.StatusCode != HttpStatusCode.OK)
+                    return null;
+
                 return document;
             }
             catch (Exception e)
