@@ -7,12 +7,12 @@ namespace ParserFacebookShops
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            
-            using var shopService = new ShopService("bohdanmanager.prland@gmail.com","PRland1234");
+
+            using var shopService = new ShopService("bohdanmanager.prland@gmail.com", "PRland1234");
 
             var shop = (await shopService.GetProductsAsync("https://www.facebook.com/pg/Shop-and-Go-105766151037772"));
 
@@ -29,7 +29,7 @@ namespace ParserFacebookShops
                 Console.WriteLine($"Name: {variable.Name}\nPrice: {variable.Price?.Cost}{variable.Price?.Currency}\nTotal: {variable.Price?.Total }\nDescription: {variable.Description}\nImage: {variable.ImagesUrl}\n");
             }
 
-            //Console.ReadKey();
+            Console.ReadKey();
         }
     }
 }

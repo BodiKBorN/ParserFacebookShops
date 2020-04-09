@@ -1,7 +1,7 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
-using ParserFacebookShops.Entities;
+using ParserFacebookShops.Models;
 using ParserFacebookShops.Models.Abstractions;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation;

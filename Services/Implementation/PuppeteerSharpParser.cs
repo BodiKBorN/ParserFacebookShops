@@ -1,4 +1,4 @@
-﻿using ParserFacebookShops.Entities;
+﻿using ParserFacebookShops.Models;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation.Generics;
 using ParserFacebookShops.Services.Abstractions;
@@ -47,13 +47,13 @@ namespace ParserFacebookShops.Services.Implementation
             try
             {
                 using var page = await OpenPageAsync(address);
-               
+
                 await page.EvaluateExpressionAsync("scrollTo(0, document.querySelector('body').scrollHeight)");
 
                 await page.WaitForTimeoutAsync(1000);
 
                 var selectorResult = await page.QuerySelectorAsync("div._4-u8 ul:last-child > li:last-child > div > div > div > a");
-                
+
                 if (selectorResult == null)
                 {
                     for (var i = 0; i < 10; i++)
@@ -96,7 +96,7 @@ namespace ParserFacebookShops.Services.Implementation
                 var pageLanguage = await page
                     .EvaluateExpressionAsync<string>(
                         "(function() {let node = document.querySelector('html'); return !!node ? node.getAttribute('lang') : null})()");
-                
+
                 var name = await page
                     .EvaluateExpressionAsync<string>(
                         "(function() {let node = document.querySelector('#u_0_y > div'); return !!node ? node.innerText : null})()");
@@ -125,7 +125,7 @@ namespace ParserFacebookShops.Services.Implementation
                     .Select(htmlImageUrl => _productService.ParseImageUrl(htmlImageUrl).Data)
                     .ToList();
 
-                var price = _productService.GetPrice(htmlPrice,pageLanguage);
+                var price = _productService.GetPrice(htmlPrice, pageLanguage);
 
                 if (name == null && htmlPrice == null)
                     return Result<Product>.CreateFailed("ITEM_DATA_NOT_FOUND");

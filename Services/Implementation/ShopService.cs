@@ -1,4 +1,4 @@
-﻿using ParserFacebookShops.Entities;
+﻿using ParserFacebookShops.Models;
 using ParserFacebookShops.Models.Abstractions.Generics;
 using ParserFacebookShops.Models.Implementation.Generics;
 using ParserFacebookShops.Services.Abstractions;

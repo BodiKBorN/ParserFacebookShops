@@ -1,6 +1,4 @@
-﻿using ParserFacebookShops.Entities.Abstractions;
-
-namespace ParserFacebookShops.Entities
+﻿namespace ParserFacebookShops.Models
 {
     public class Price
     {
